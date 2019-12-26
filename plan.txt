@@ -1,0 +1,5 @@
+TO DO
+Check with React
+Add Watermark
+store images api
+Integrate with Sign Up | Login | LogOut
