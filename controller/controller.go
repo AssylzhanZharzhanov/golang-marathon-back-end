@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/phayes/permbits"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -382,7 +383,12 @@ func AddMarathonHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func AddImageHandler(w http.ResponseWriter, r *http.Request) {
-	// w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
 	// var res model.Response
 	// var request struct {
 	// 	Marathon string `json:"marathon"`
@@ -445,16 +451,40 @@ func BuyImageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UploadManyFiles(w http.ResponseWriter, r *http.Request) {
+	// w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+	var res model.ResponseSuccess
+
 	err := r.ParseMultipartForm(200000) // grab the multipart form
+
 	if err != nil {
 		fmt.Fprintln(w, err)
 		return
 	}
 
 	formdata := r.MultipartForm // ok, no problem so far, read the Form data
+	permissions, err := permbits.Stat("/home/mrx/Projects/src/marathon/images")
+
+	if err != nil {
+		fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
+		return
+	}
+
+	if !permissions.GroupWrite() {
+		permissions.SetGroupWrite(true)
+		err := permbits.Chmod("/home/mrx/Projects/src/marathon/images", permissions)
+		if err != nil {
+			fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
+			return
+		}
+	}
 
 	//get the *fileheaders
-	files := formdata.File["multiplefiles"] // grab the filenames
+	files := formdata.File["imgCollection"] // grab the filenames
 
 	for i, _ := range files { // loop through the files one by one
 		file, err := files[i].Open()
@@ -464,11 +494,21 @@ func UploadManyFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		out, err := os.Create("/static/" + files[i].Filename)
+		log.Println(files[i].Filename)
+		// err = os.Chmod("/home/mrx/Projects/src/marathon/images", 0777)
+		// if err != nil {
+		// 	log.Println(err)
+		// }
+		out, err := os.Create("/home/mrx/Projects/src/marathon/images/" + files[i].Filename)
 
 		defer out.Close()
 		if err != nil {
-			fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
+			res.StatusCode = 200
+			res.Message = "SUCCESS"
+			res.Result = "Unable to create the file for writing. Check your write access privilege"
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(res)
+			// fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
 			return
 		}
 
@@ -479,9 +519,14 @@ func UploadManyFiles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Fprintf(w, "Files uploaded successfully : ")
-		fmt.Fprintf(w, files[i].Filename+"\n")
-
+		// fmt.Fprintf(w, "Files uploaded successfully : ")
+		// fmt.Fprintf(w, files[i].Filename+"\n")
 	}
 
+	res.StatusCode = 200
+	res.Message = "SUCCESS"
+	res.Result = "Photos successfully added"
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
+	return
 }

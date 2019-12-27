@@ -30,6 +30,10 @@ func main() {
 
 	r := mux.NewRouter()
 
+	// staticFileDirectory := http.Dir("./assets/")
+	// staticFileHandler := http.StripPrefix("/assets/", http.FileServer(staticFileDirectory))
+	// r.PathPrefix("/assets/").Handler(staticFileHandler).Methods("GET")
+
 	r.HandleFunc("api/v1/signup", controller.RegistrationHandler).
 		Methods("POST")
 	r.HandleFunc("api/v1/login", controller.LoginHandler).
