@@ -39,7 +39,7 @@ func main() {
 	r.HandleFunc("/api/v1/images", controller.GetImagesHandler).
 		Methods("GET")
 	r.HandleFunc("/api/v1/marathons", controller.GetMarathonsHandler).
-		Methods("GET")
+		Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/v1/marathons", controller.AddMarathonHandler).
 		Methods("POST")
 	r.HandleFunc("/api/v1/image/{id}", controller.SearchImageHandler).

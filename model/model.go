@@ -27,20 +27,21 @@ type Search struct {
 }
 
 type Marathon struct {
-	MarathonID   int    `json:"marathonId"`
-	MarathonName string `json:"marathonName"`
+	MarathonId   int    `json:"marathonid"`
+	Image        string `json:"image"`
+	MarathonName string `json:"marathonname"`
 }
 
 type ImageWatermark struct {
-	ImageID    int    `json:"imageId"`
+	ImageID    int    `json:"imageid"`
 	Image      string `json:"image"`
-	MarathonID int    `json:"marathonId"`
+	MarathonID int    `json:"marathonid"`
 }
 
 type Image struct {
-	ImageID    int    `json:"imageId"`
+	ImageID    int    `json:"imageid"`
 	Image      string `json:"image"`
-	MarathonID int    `json:"marathonId"`
+	MarathonID int    `json:"marathonid"`
 }
 
 type Response struct {

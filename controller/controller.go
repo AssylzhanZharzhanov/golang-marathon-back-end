@@ -152,6 +152,11 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func SearchImageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
 	var res model.ResponseImageWatermark
 
 	token_auth := r.Header.Get("Authorization")
@@ -221,22 +226,16 @@ func SearchImageHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetImagesHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
 	var res model.ResponseImageWatermark
 
-	var request struct {
-		MarathonID int `json:"marathonId"`
-	}
+	id := r.URL.Query()["id"][0]
 
-	body, _ := ioutil.ReadAll(r.Body)
-	err := json.Unmarshal(body, &request)
-
-	if err != nil {
-		res.StatusCode = 500
-		res.Message = err.Error()
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(res)
-		return
-	}
+	marathonID := id
 
 	database, session, err := db.GetDB()
 	defer session.Close()
@@ -251,7 +250,7 @@ func GetImagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	imagesWatermark := []model.ImageWatermark{}
 	imagesWatermarkCollection := database.C("images_watermark")
-	err = imagesWatermarkCollection.Find(bson.M{"marathonId": request.MarathonID}).All(&imagesWatermark)
+	err = imagesWatermarkCollection.Find(bson.M{"marathonId": marathonID}).All(&imagesWatermark)
 
 	if err != nil {
 		res.StatusCode = 500
@@ -271,6 +270,11 @@ func GetImagesHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetMarathonsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
 	var res model.ResponseMarathons
 
 	database, session, err := db.GetDB()
@@ -300,7 +304,7 @@ func GetMarathonsHandler(w http.ResponseWriter, r *http.Request) {
 	res.StatusCode = 200
 	res.Message = "SUCCESS"
 	res.Result = marathons
-	w.WriteHeader(http.StatusOK)
+	// w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res)
 	return
 }
@@ -310,7 +314,7 @@ func AddMarathonHandler(w http.ResponseWriter, r *http.Request) {
 	var res model.ResponseSuccess
 
 	var request struct {
-		MarathonID   int    `json:"marathonId"`
+		Image        string `json:"image"`
 		MarathonName string `json:"marathonName"`
 	}
 
@@ -327,8 +331,38 @@ func AddMarathonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type MaxID struct {
+		ID  string
+		Max int
+	}
+
+	var result MaxID
+	pipeline := []bson.M{
+		{
+			"$group": bson.M{
+				"_id": "_id",
+				"max": bson.M{"$max": "$marathonid"},
+			},
+		},
+	}
+
 	marathonsCollection := database.C("marathons")
-	err = marathonsCollection.Insert(request)
+	err = marathonsCollection.Pipe(pipeline).One(&result)
+
+	if err != nil {
+		res.StatusCode = 500
+		res.Message = err.Error()
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(res)
+		return
+	}
+
+	var marathon model.Marathon
+	marathon.MarathonId = result.Max + 1
+	marathon.Image = request.Image
+	marathon.MarathonName = request.MarathonName
+
+	err = marathonsCollection.Insert(marathon)
 	defer session.Close()
 
 	if err != nil {
